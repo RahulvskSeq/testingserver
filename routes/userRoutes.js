@@ -69,7 +69,7 @@
 import express from "express";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
-
+import Order from "../models/Order.js";
 const router = express.Router();
 
 // ==================== AUTH MIDDLEWARE ====================
@@ -301,8 +301,30 @@ router.put("/addresses/:id/default", protect, async (req, res) => {
 
 // ==================== GET ORDERS ====================
 router.get("/orders", protect, async (req, res) => {
-  const user = await User.findById(req.user._id);
-  res.json(user.orders || []);
+  try {
+    console.log("=== ORDER DEBUG ===");
+    console.log("req.user:", req.user);
+    console.log("req.user._id:", req.user._id);
+
+    const allOrders = await Order.find({});
+    console.log("Total orders in DB:", allOrders.length);
+    console.log("Sample order user field:", allOrders[0]?.user);
+    console.log("Sample order status:", allOrders[0]?.status);
+
+    const userOrders = await Order.find({ user: req.user._id });
+    console.log("Orders matching this user (no status filter):", userOrders.length);
+
+    const filtered = await Order.find({
+      user: req.user._id,
+      status: { $in: ["paid", "shipped", "delivered", "cancelled"] },
+    });
+    console.log("Orders after status filter:", filtered.length);
+
+    res.json(filtered);
+  } catch (err) {
+    console.error("Order fetch error:", err);
+    res.status(500).json({ message: "Failed", error: err.message });
+  }
 });
 
 export default router;
