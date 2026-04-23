@@ -302,29 +302,44 @@ router.put("/addresses/:id/default", protect, async (req, res) => {
 // ==================== GET ORDERS ====================
 router.get("/orders", protect, async (req, res) => {
   try {
-    console.log("=== ORDER DEBUG ===");
-    console.log("req.user:", req.user);
-    console.log("req.user._id:", req.user._id);
-
-    const allOrders = await Order.find({});
-    console.log("Total orders in DB:", allOrders.length);
-    console.log("Sample order user field:", allOrders[0]?.user);
-    console.log("Sample order status:", allOrders[0]?.status);
-
-    const userOrders = await Order.find({ user: req.user._id });
-    console.log("Orders matching this user (no status filter):", userOrders.length);
-
-    const filtered = await Order.find({
+    const orders = await Order.find({
       user: req.user._id,
-      status: { $in: ["paid", "shipped", "delivered", "cancelled"] },
-    });
-    console.log("Orders after status filter:", filtered.length);
-
-    res.json(filtered);
+      status: { $in: ["paid", "packed", "shipped", "delivered", "cancelled", "refunded"] },
+    }).sort({ createdAt: -1 });
+ 
+    res.json(orders);
   } catch (err) {
-    console.error("Order fetch error:", err);
-    res.status(500).json({ message: "Failed", error: err.message });
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ message: "Failed to fetch orders" });
   }
 });
+ 
+
+
+
+router.put("/update-status/:orderId", protect, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ["pending", "paid", "packed", "shipped", "delivered", "cancelled", "refunded"];
+ 
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+ 
+    const order = await Order.findByIdAndUpdate(
+      req.params.orderId,
+      { status },
+      { new: true }
+    );
+ 
+    if (!order) return res.status(404).json({ message: "Order not found" });
+ 
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update status" });
+  }
+});
+
+
 
 export default router;
