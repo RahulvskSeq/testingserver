@@ -79,4 +79,22 @@ const userSchema = mongoose.Schema({
   wishlist: [{ type: String }],
 }, { timestamps: true });
 
+
+router.post('/google-login', async (req, res) => {
+    const { email, name, googleId, picture } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        if (!user) {
+            // Auto-register if first time
+            user = await User.create({ name, email, googleId, picture, password: '' });
+        }
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        res.json({ token, user });
+    } catch (err) {
+        res.status(500).json({ message: 'Google login failed' });
+    }
+});
+
+
+
 export default mongoose.model("UserSequence", userSchema);
